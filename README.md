@@ -21,6 +21,7 @@
 - 无状态工具调用所需的加密 reasoning item 回传
 - SillyTavern `requestProxy`、代理环境变量和 Windows 系统代理
 - SillyTavern 1.14.0、1.15.0、1.16.0、1.17.0 与 1.18.0
+- 仅接管当前主 OpenAI 端点；其他扩展指定的自定义 API 仍保留原协议
 
 ## 安装
 
@@ -67,6 +68,10 @@ node plugins.js install https://github.com/AES0529/SillyTavern-OpenAI-Responses
 如果模型没有出现在列表中，可在“扩展”设置里的 OpenAI Responses 面板手动填写模型 ID。
 
 Reverse Proxy 应填写 API 基础地址，例如 `https://api.openai.com/v1`；插件会在末尾追加 `/responses`。
+
+## 多 API 扩展兼容
+
+当 JS-Slash-Runner、狐裁等扩展为某次生成指定了不同的 Reverse Proxy 时，本扩展不会把该请求重定向到 Responses API。例如主聊天可以使用 OpenCode Go Responses，而狐裁继续通过另一个 OpenAI 兼容地址调用 `/chat/completions`。
 
 ## 网络代理
 

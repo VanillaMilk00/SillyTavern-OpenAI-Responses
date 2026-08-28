@@ -1,6 +1,7 @@
 import { eventSource, event_types, saveSettingsDebounced } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { oai_settings } from '../../../openai.js';
+import { shouldRouteGenerationToResponses } from './request-routing.js';
 
 const MODULE_NAME = 'openaiResponses';
 const SENTINEL_VALUE = 'openai_responses';
@@ -253,6 +254,10 @@ function installSettingsPanel() {
 
 function onGenerationSettingsReady(generationData) {
     if (!getSettings().enabled || oai_settings.chat_completion_source !== CORE_SOURCE_VALUE) return;
+    if (!shouldRouteGenerationToResponses(generationData, oai_settings.reverse_proxy)) {
+        console.debug('[OpenAI Responses] Skipped a generation request targeting a different API endpoint.');
+        return;
+    }
 
     generationData._openai_responses = {
         store: Boolean(getSettings().store),
