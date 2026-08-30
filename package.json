@@ -1,13 +1,13 @@
 {
     "name": "sillytavern-openai-responses",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "OpenAI Responses API source for SillyTavern",
     "type": "module",
     "main": "server/index.js",
     "license": "AGPL-3.0-only",
     "scripts": {
         "test": "node --test",
-        "check": "node --check index.js && node --check request-routing.js && node --check server/index.js && node --check server/adapter.js && node --check server/proxy.js"
+        "check": "node --check index.js && node --check password-autofill-guard.js && node --check request-routing.js && node --check server/index.js && node --check server/adapter.js && node --check server/proxy.js"
     },
     "engines": {
         "node": ">=18"

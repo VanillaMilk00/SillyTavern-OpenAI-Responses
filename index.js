@@ -1,6 +1,7 @@
 import { eventSource, event_types, saveSettingsDebounced } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { oai_settings } from '../../../openai.js';
+import { installPasswordAutofillGuard } from './password-autofill-guard.js';
 import { shouldRouteGenerationToResponses } from './request-routing.js';
 
 const MODULE_NAME = 'openaiResponses';
@@ -252,6 +253,13 @@ function installSettingsPanel() {
     panel.querySelector('#openai_responses_apply_model')?.addEventListener('click', applyManualModel);
 }
 
+function installProxyPasswordProtection() {
+    const input = document.getElementById('openai_proxy_password');
+    if (!(input instanceof HTMLInputElement)) return;
+
+    installPasswordAutofillGuard(input, () => oai_settings.proxy_password);
+}
+
 function onGenerationSettingsReady(generationData) {
     if (!getSettings().enabled || oai_settings.chat_completion_source !== CORE_SOURCE_VALUE) return;
     if (!shouldRouteGenerationToResponses(generationData, oai_settings.reverse_proxy)) {
@@ -281,6 +289,7 @@ async function initialize() {
     installSourceOption();
     installConnectionNote();
     installSettingsPanel();
+    installProxyPasswordProtection();
     tagUnsupportedControls();
     eventSource.on(event_types.CHAT_COMPLETION_SETTINGS_READY, onGenerationSettingsReady);
     updateActiveUi();
