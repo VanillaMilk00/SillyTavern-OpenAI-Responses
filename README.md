@@ -2,6 +2,8 @@
 
 为 SillyTavern 增加一个可见的 **OpenAI Responses** 聊天补全来源，并把酒馆现有的 Chat Completions 请求与响应实时转换为 OpenAI Responses API 格式。
 
+> 本仓库是 [AES0529/SillyTavern-OpenAI-Responses](https://github.com/AES0529/SillyTavern-OpenAI-Responses) 的维护分支。当前 Fork 在上游 `v0.3.0` 基础上加入多 API 扩展隔离与代理密码自动填充保护；原项目版权与 AGPL-3.0 授权保持不变。
+
 本项目包含：
 
 - 前端扩展：增加来源选项、设置界面和请求桥接。
@@ -24,6 +26,11 @@
 - 仅接管当前主 OpenAI 端点；其他扩展指定的自定义 API 仍保留原协议
 - 防止浏览器密码管理器把代理密码误当作网站登录密码并覆盖保存值
 
+## 本 Fork 的修复
+
+- **狐裁／JS-Slash-Runner 相容性**：当第三方扩展为单次生成指定其他 Reverse Proxy 时，不强制改写为 Responses 协议，避免错误请求 `/responses` 后出现 HTTP 404。
+- **代理密码保护**：阻止浏览器密码管理器把 SillyTavern 登录密码自动填入代理密码栏，并覆盖原先保存的代理凭证。
+
 ## 安装
 
 该扩展需要把**同一个 Git 仓库安装两次**。
@@ -33,7 +40,7 @@
 在 SillyTavern 的“扩展”面板中选择“安装扩展”，粘贴：
 
 ```text
-https://github.com/AES0529/SillyTavern-OpenAI-Responses
+https://github.com/VanillaMilk00/SillyTavern-OpenAI-Responses
 ```
 
 ### 2. 安装服务端插件
@@ -47,7 +54,7 @@ enableServerPlugins: true
 并在 SillyTavern 根目录运行：
 
 ```bash
-node plugins.js install https://github.com/AES0529/SillyTavern-OpenAI-Responses
+node plugins.js install https://github.com/VanillaMilk00/SillyTavern-OpenAI-Responses
 ```
 
 然后完整重启 SillyTavern。
