@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+    buildResponsesHeaders,
     buildResponsesRequest,
     convertMessages,
     convertResponsesEvent,
@@ -46,6 +47,48 @@ test('buildResponsesRequest maps text, images, tools and Responses parameters', 
     assert.equal(result.truncation, 'auto');
     assert.equal('messages' in result, false);
     assert.equal('stop' in result, false);
+});
+
+test('buildResponsesRequest applies custom YAML body parameters in include-then-exclude order', () => {
+    const result = buildResponsesRequest({
+        model: 'gpt-test',
+        messages: [{ role: 'user', content: 'Hello' }],
+        temperature: 0.2,
+        top_p: 0.8,
+        _openai_responses: {
+            custom_include_body: [
+                'temperature: 0.7',
+                'metadata:',
+                '  route: responses',
+            ].join('\n'),
+            custom_exclude_body: '- top_p\n- stream',
+        },
+    });
+
+    assert.equal(result.temperature, 0.7);
+    assert.deepEqual(result.metadata, { route: 'responses' });
+    assert.equal('top_p' in result, false);
+    assert.equal('stream' in result, false);
+});
+
+test('buildResponsesRequest accepts a scalar body exclusion for compatibility', () => {
+    const result = buildResponsesRequest({
+        model: 'gpt-test',
+        messages: [{ role: 'user', content: 'Hello' }],
+        temperature: 0.2,
+        _openai_responses: { custom_exclude_body: 'temperature' },
+    });
+
+    assert.equal('temperature' in result, false);
+});
+
+test('buildResponsesHeaders combines defaults with custom YAML request headers', () => {
+    const result = buildResponsesHeaders('secret', 'X-Trace: trace-id\nX-Retry: 2');
+
+    assert.equal(result.Authorization, 'Bearer secret');
+    assert.equal(result['Content-Type'], 'application/json');
+    assert.equal(result['X-Trace'], 'trace-id');
+    assert.equal(result['X-Retry'], 2);
 });
 
 test('convertMessages preserves stateless reasoning and function call output', () => {

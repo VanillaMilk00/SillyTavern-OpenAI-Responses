@@ -16,6 +16,9 @@ const DEFAULT_SETTINGS = Object.freeze({
     store: false,
     truncation: 'disabled',
     manualModel: '',
+    custom_include_body: '',
+    custom_exclude_body: '',
+    custom_include_headers: '',
 });
 
 let sourceOption;
@@ -238,6 +241,20 @@ function installSettingsPanel() {
                     <input id="openai_responses_manual_model" class="text_pole flex1" type="text" value="${String(settings.manualModel).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}" placeholder="例如 gpt-5.4">
                     <button id="openai_responses_apply_model" class="menu_button">应用</button>
                 </div>
+                <button id="openai_responses_additional_parameters_toggle" type="button" class="menu_button" aria-expanded="false" aria-controls="openai_responses_additional_parameters">其他參數</button>
+                <div id="openai_responses_additional_parameters" class="openai-responses-additional-parameters displayNone">
+                    <label for="openai_responses_custom_include_body">包含請求主體參數</label>
+                    <textarea id="openai_responses_custom_include_body" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="top_k: 20&#10;repetition_penalty: 1.1"></textarea>
+                    <small>使用 YAML 物件；這些欄位會合併到 Responses 請求主體。</small>
+
+                    <label for="openai_responses_custom_exclude_body">排除請求主體參數</label>
+                    <textarea id="openai_responses_custom_exclude_body" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="- temperature&#10;- top_p"></textarea>
+                    <small>使用 YAML 陣列；列出的頂層欄位會從請求主體移除。</small>
+
+                    <label for="openai_responses_custom_include_headers">包含請求標頭（Request Headers）</label>
+                    <textarea id="openai_responses_custom_include_headers" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="X-Custom-Header: value&#10;Another-Header: another-value"></textarea>
+                    <small>使用 YAML 物件；標頭會附加到上游 Responses 請求。</small>
+                </div>
                 <small>函数调用、流式输出、图片输入、JSON Schema、推理强度、verbosity 和 Web Search 会自动转换。</small>
             </div>
         </div>`;
@@ -252,6 +269,30 @@ function installSettingsPanel() {
         saveSettingsDebounced();
     });
     panel.querySelector('#openai_responses_apply_model')?.addEventListener('click', applyManualModel);
+
+    const additionalParametersToggle = panel.querySelector('#openai_responses_additional_parameters_toggle');
+    const additionalParameters = panel.querySelector('#openai_responses_additional_parameters');
+    if (additionalParametersToggle && additionalParameters) {
+        additionalParametersToggle.addEventListener('click', () => {
+            const hidden = additionalParameters.classList.toggle('displayNone');
+            additionalParametersToggle.setAttribute('aria-expanded', String(!hidden));
+        });
+    }
+
+    const parameterFields = [
+        ['openai_responses_custom_include_body', 'custom_include_body'],
+        ['openai_responses_custom_exclude_body', 'custom_exclude_body'],
+        ['openai_responses_custom_include_headers', 'custom_include_headers'],
+    ];
+    for (const [elementId, settingKey] of parameterFields) {
+        const textarea = panel.querySelector(`#${elementId}`);
+        if (!(textarea instanceof HTMLTextAreaElement)) continue;
+        textarea.value = typeof settings[settingKey] === 'string' ? settings[settingKey] : '';
+        textarea.addEventListener('input', event => {
+            settings[settingKey] = String(event.currentTarget.value ?? '');
+            saveSettingsDebounced();
+        });
+    }
 }
 
 function installProxyPasswordProtection() {
@@ -332,9 +373,13 @@ function onGenerationSettingsReady(generationData) {
         generationData.proxy_password = trustedValue;
     }
 
+    const settings = getSettings();
     generationData._openai_responses = {
-        store: Boolean(getSettings().store),
-        truncation: getSettings().truncation === 'auto' ? 'auto' : 'disabled',
+        store: Boolean(settings.store),
+        truncation: settings.truncation === 'auto' ? 'auto' : 'disabled',
+        custom_include_body: typeof settings.custom_include_body === 'string' ? settings.custom_include_body : '',
+        custom_exclude_body: typeof settings.custom_exclude_body === 'string' ? settings.custom_exclude_body : '',
+        custom_include_headers: typeof settings.custom_include_headers === 'string' ? settings.custom_include_headers : '',
     };
 
     // Responses has one candidate per request. SillyTavern will still provide

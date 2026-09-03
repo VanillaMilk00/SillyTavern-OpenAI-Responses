@@ -1,5 +1,9 @@
 # Changelog
 
+## 未发布
+
+- 在扩展设置中新增「其他参数」，支持附加／排除 Responses 请求主体参数及附加请求标头。
+
 ## 0.3.2
 
 - 修复 Chrome／Edge 页面加载时将 SillyTavern USER 密码自动填入并保存到代理密码的问题。

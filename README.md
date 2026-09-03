@@ -14,6 +14,7 @@
 - 普通生成与流式生成
 - OpenAI 模型列表、API Key 与 Reverse Proxy 配置复用
 - 手动填写模型 ID
+- 通过「其他参数」附加／排除请求主体参数及请求标头
 - 文本与图片输入
 - SillyTavern 函数工具调用及工具结果回传
 - JSON Schema Structured Outputs
@@ -74,6 +75,31 @@ node plugins.js install https://github.com/VanillaMilk00/SillyTavern-OpenAI-Resp
 5. 点击“连接”，然后开始聊天。
 
 如果模型没有出现在列表中，可在“扩展”设置里的 OpenAI Responses 面板手动填写模型 ID。
+
+在同一面板点开「其他参数」即可调整发送给 Responses API 的额外内容：
+
+- **包含请求主体参数**：YAML 物件，会合并到请求主体。
+- **排除请求主体参数**：YAML 阵列，会移除请求主体中的对应顶层字段。
+- **包含请求标头（Request Headers）**：YAML 物件，会附加到上游请求标头。
+
+例如，分别填入以下内容：
+
+```yaml
+# 包含请求主体参数
+reasoning:
+  effort: high
+```
+
+```yaml
+# 排除请求主体参数
+- temperature
+- top_p
+```
+
+```yaml
+# 包含请求标头
+X-Custom-Header: value
+```
 
 Reverse Proxy 应填写 API 基础地址，例如 `https://api.openai.com/v1`；插件会在末尾追加 `/responses`。
 

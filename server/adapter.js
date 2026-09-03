@@ -1,3 +1,5 @@
+import { excludeKeysByYaml, mergeObjectWithYaml } from './request-parameters.js';
+
 const SIGNATURE_PREFIX = 'st-openai-responses-v1:';
 
 function compactObject(value) {
@@ -190,7 +192,7 @@ export function buildResponsesRequest(body) {
         })
         : undefined;
 
-    return compactObject({
+    const responsesBody = compactObject({
         model: body?.model,
         input: convertMessages(body?.messages),
         stream: Boolean(body?.stream),
@@ -206,6 +208,34 @@ export function buildResponsesRequest(body) {
         tool_choice: tools.length ? convertToolChoice(body?.tool_choice) : undefined,
         parallel_tool_calls: tools.some(tool => tool.type === 'function') ? true : undefined,
     });
+
+    // Match SillyTavern's custom endpoint semantics: included parameters are
+    // merged after the converted defaults, then excluded keys are removed.
+    // The extension-owned options object keeps these settings away from the
+    // regular Chat Completions payload.
+    mergeObjectWithYaml(
+        responsesBody,
+        options.custom_include_body ?? body?.custom_include_body,
+    );
+    excludeKeysByYaml(
+        responsesBody,
+        options.custom_exclude_body ?? body?.custom_exclude_body,
+    );
+
+    return responsesBody;
+}
+
+export function buildResponsesHeaders(apiKey, customIncludeHeaders) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    };
+
+    // Header values are intentionally applied after the defaults so callers
+    // can provide provider-specific headers (or deliberately replace a
+    // default) using the same custom-parameter rules as SillyTavern.
+    mergeObjectWithYaml(headers, customIncludeHeaders);
+    return headers;
 }
 
 function extractOutputText(output) {

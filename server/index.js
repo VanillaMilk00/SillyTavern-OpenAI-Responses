@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
     buildResponsesRequest,
+    buildResponsesHeaders,
     convertResponsesEvent,
     convertResponsesResponse,
     createStreamState,
@@ -159,10 +160,10 @@ export async function init(router) {
             const responsesBody = buildResponsesRequest(body);
             const upstream = await outboundFetch(endpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}),
-                },
+                headers: buildResponsesHeaders(
+                    apiKey,
+                    body?._openai_responses?.custom_include_headers ?? body.custom_include_headers,
+                ),
                 body: JSON.stringify(responsesBody),
                 signal: controller.signal,
                 agent: outboundProxy.getAgent(),
