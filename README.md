@@ -76,7 +76,7 @@ node plugins.js install https://github.com/VanillaMilk00/SillyTavern-OpenAI-Resp
 
 如果模型没有出现在列表中，可在“扩展”设置里的 OpenAI Responses 面板手动填写模型 ID。
 
-在同一面板点开「其他参数」即可调整发送给 Responses API 的额外内容：
+在 API 連線按鈕列的「連線」與「測試訊息」之間點開「其他參數」，即可調整發送給 Responses API 的額外內容：
 
 - **包含请求主体参数**：YAML 物件，会合并到请求主体。
 - **排除请求主体参数**：YAML 阵列，会移除请求主体中的对应顶层字段。

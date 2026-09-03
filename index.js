@@ -96,6 +96,14 @@ function updateActiveUi() {
     document.body.classList.toggle('openai-responses-active', enabled);
     document.getElementById('openai_responses_active_note')?.classList.toggle('displayNone', !enabled);
 
+    const additionalParametersToggle = document.getElementById('openai_responses_additional_parameters_toggle');
+    const additionalParameters = document.getElementById('openai_responses_additional_parameters');
+    additionalParametersToggle?.classList.toggle('displayNone', !enabled);
+    if (!enabled && additionalParametersToggle && additionalParameters) {
+        additionalParameters.hidden = true;
+        additionalParametersToggle.setAttribute('aria-expanded', 'false');
+    }
+
     if (enabled && sourceOption) {
         sourceOption.value = CORE_SOURCE_VALUE;
         sourceOption.selected = true;
@@ -241,20 +249,6 @@ function installSettingsPanel() {
                     <input id="openai_responses_manual_model" class="text_pole flex1" type="text" value="${String(settings.manualModel).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}" placeholder="例如 gpt-5.4">
                     <button id="openai_responses_apply_model" class="menu_button">应用</button>
                 </div>
-                <button id="openai_responses_additional_parameters_toggle" type="button" class="menu_button" aria-expanded="false" aria-controls="openai_responses_additional_parameters">其他參數</button>
-                <div id="openai_responses_additional_parameters" class="openai-responses-additional-parameters displayNone">
-                    <label for="openai_responses_custom_include_body">包含請求主體參數</label>
-                    <textarea id="openai_responses_custom_include_body" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="top_k: 20&#10;repetition_penalty: 1.1"></textarea>
-                    <small>使用 YAML 物件；這些欄位會合併到 Responses 請求主體。</small>
-
-                    <label for="openai_responses_custom_exclude_body">排除請求主體參數</label>
-                    <textarea id="openai_responses_custom_exclude_body" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="- temperature&#10;- top_p"></textarea>
-                    <small>使用 YAML 陣列；列出的頂層欄位會從請求主體移除。</small>
-
-                    <label for="openai_responses_custom_include_headers">包含請求標頭（Request Headers）</label>
-                    <textarea id="openai_responses_custom_include_headers" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="X-Custom-Header: value&#10;Another-Header: another-value"></textarea>
-                    <small>使用 YAML 物件；標頭會附加到上游 Responses 請求。</small>
-                </div>
                 <small>函数调用、流式输出、图片输入、JSON Schema、推理强度、verbosity 和 Web Search 会自动转换。</small>
             </div>
         </div>`;
@@ -269,15 +263,61 @@ function installSettingsPanel() {
         saveSettingsDebounced();
     });
     panel.querySelector('#openai_responses_apply_model')?.addEventListener('click', applyManualModel);
+}
 
-    const additionalParametersToggle = panel.querySelector('#openai_responses_additional_parameters_toggle');
-    const additionalParameters = panel.querySelector('#openai_responses_additional_parameters');
-    if (additionalParametersToggle && additionalParameters) {
-        additionalParametersToggle.addEventListener('click', () => {
-            const hidden = additionalParameters.classList.toggle('displayNone');
-            additionalParametersToggle.setAttribute('aria-expanded', String(!hidden));
-        });
+function installAdditionalParametersControl() {
+    const connectButton = document.getElementById('api_button_openai');
+    const testButton = document.getElementById('test_api_button');
+    const actionRow = connectButton?.parentElement;
+    if (!connectButton || !actionRow || document.getElementById('openai_responses_additional_parameters_toggle')) return;
+
+    const settings = getSettings();
+    const toggle = document.createElement('div');
+    toggle.id = 'openai_responses_additional_parameters_toggle';
+    toggle.className = 'menu_button menu_button_icon';
+    toggle.setAttribute('role', 'button');
+    toggle.setAttribute('tabindex', '0');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-controls', 'openai_responses_additional_parameters');
+    toggle.textContent = '其他參數';
+
+    // Keep the control in SillyTavern's API action row immediately before the
+    // Test Message button. Source-specific core controls between Connect and
+    // Test are hidden by SillyTavern when OpenAI Responses is selected.
+    if (testButton?.parentElement === actionRow) {
+        testButton.before(toggle);
+    } else {
+        connectButton.after(toggle);
     }
+
+    const additionalParameters = document.createElement('div');
+    additionalParameters.id = 'openai_responses_additional_parameters';
+    additionalParameters.className = 'openai-responses-additional-parameters';
+    additionalParameters.hidden = true;
+    additionalParameters.innerHTML = `
+        <label for="openai_responses_custom_include_body"><strong>包含請求主體參數</strong></label>
+        <textarea id="openai_responses_custom_include_body" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="top_k: 20&#10;repetition_penalty: 1.1"></textarea>
+        <small>使用 YAML 物件；這些欄位會合併到 Responses 請求主體。</small>
+
+        <label for="openai_responses_custom_exclude_body"><strong>排除請求主體參數</strong></label>
+        <textarea id="openai_responses_custom_exclude_body" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="- temperature&#10;- top_p"></textarea>
+        <small>使用 YAML 陣列；列出的頂層欄位會從請求主體移除。</small>
+
+        <label for="openai_responses_custom_include_headers"><strong>包含請求標頭（Request Headers）</strong></label>
+        <textarea id="openai_responses_custom_include_headers" class="text_pole openai-responses-parameter-textarea" rows="4" spellcheck="false" placeholder="X-Custom-Header: value&#10;Another-Header: another-value"></textarea>
+        <small>使用 YAML 物件；標頭會附加到上游 Responses 請求。</small>`;
+    actionRow.insertAdjacentElement('afterend', additionalParameters);
+
+    const toggleAdditionalParameters = () => {
+        additionalParameters.hidden = !additionalParameters.hidden;
+        toggle.setAttribute('aria-expanded', String(!additionalParameters.hidden));
+    };
+    toggle.addEventListener('click', toggleAdditionalParameters);
+    toggle.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        toggleAdditionalParameters();
+    });
 
     const parameterFields = [
         ['openai_responses_custom_include_body', 'custom_include_body'],
@@ -285,7 +325,7 @@ function installSettingsPanel() {
         ['openai_responses_custom_include_headers', 'custom_include_headers'],
     ];
     for (const [elementId, settingKey] of parameterFields) {
-        const textarea = panel.querySelector(`#${elementId}`);
+        const textarea = additionalParameters.querySelector(`#${elementId}`);
         if (!(textarea instanceof HTMLTextAreaElement)) continue;
         textarea.value = typeof settings[settingKey] === 'string' ? settings[settingKey] : '';
         textarea.addEventListener('input', event => {
@@ -402,6 +442,7 @@ async function initialize() {
     installSourceOption();
     installConnectionNote();
     installSettingsPanel();
+    installAdditionalParametersControl();
     tagUnsupportedControls();
     eventSource.on(event_types.CHAT_COMPLETION_SETTINGS_READY, onGenerationSettingsReady);
     updateActiveUi();

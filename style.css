@@ -17,9 +17,14 @@
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
+    margin-top: 0.65rem;
     padding: 0.65rem;
     border: 1px solid color-mix(in srgb, var(--SmartThemeQuoteColor) 45%, transparent);
     border-radius: 0.35rem;
+}
+
+.openai-responses-additional-parameters[hidden] {
+    display: none !important;
 }
 
 .openai-responses-parameter-textarea {
