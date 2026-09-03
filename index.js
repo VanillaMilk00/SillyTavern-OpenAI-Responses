@@ -1,7 +1,7 @@
-import { eventSource, event_types, saveSettingsDebounced } from '../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, settings as loadedSettings } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { oai_settings } from '../../../openai.js';
-import { installPasswordAutofillGuard } from './password-autofill-guard.js';
+import { installPasswordAutofillGuard, resolveTrustedProxyPassword } from './password-autofill-guard.js';
 import { shouldRouteGenerationToResponses } from './request-routing.js';
 
 const MODULE_NAME = 'openaiResponses';
@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = Object.freeze({
 let sourceOption;
 let originalFetch;
 let initializationPromise;
+let proxyPasswordGuard;
 
 function getSettings() {
     extension_settings[MODULE_NAME] ??= { ...DEFAULT_SETTINGS };
@@ -257,7 +258,65 @@ function installProxyPasswordProtection() {
     const input = document.getElementById('openai_proxy_password');
     if (!(input instanceof HTMLInputElement)) return;
 
-    installPasswordAutofillGuard(input, () => oai_settings.proxy_password);
+    if (proxyPasswordGuard) return;
+
+    const liveValueBeforeRestore = oai_settings.proxy_password;
+    const loadedValue = resolveTrustedProxyPassword(loadedSettings, liveValueBeforeRestore);
+    proxyPasswordGuard = installPasswordAutofillGuard(input, loadedValue);
+    const trustedValue = proxyPasswordGuard.restore();
+    oai_settings.proxy_password = trustedValue;
+
+    // The core input handler may have queued a save before this extension was
+    // activated. Re-save the restored value so that the browser credential can
+    // never reach SillyTavern's persisted settings.
+    if (liveValueBeforeRestore !== trustedValue) saveSettingsDebounced();
+
+    const restoreBeforeCoreChange = () => {
+        if (!proxyPasswordGuard) return;
+        const value = proxyPasswordGuard.restore();
+        oai_settings.proxy_password = value;
+    };
+
+    const syncAfterCoreChange = () => {
+        queueMicrotask(() => {
+            if (!proxyPasswordGuard) return;
+            const value = proxyPasswordGuard.sync(oai_settings.proxy_password);
+            oai_settings.proxy_password = value;
+        });
+    };
+
+    // Preset changes and save/delete actions are handled by SillyTavern's
+    // existing listeners first; synchronize after those listeners complete.
+    const listenAfterCoreChange = (element, eventName) => {
+        if (!element) return;
+
+        // SillyTavern uses both native events and jQuery .trigger() for these
+        // controls across supported releases. Prefer jQuery when available so
+        // programmatic preset changes are covered as well.
+        const jqueryElement = typeof globalThis.$ === 'function' ? globalThis.$(element) : null;
+        if (jqueryElement && typeof jqueryElement.on === 'function') {
+            jqueryElement.on(`${eventName}.openaiResponsesPasswordGuard`, syncAfterCoreChange);
+            return;
+        }
+
+        element.addEventListener(eventName, syncAfterCoreChange);
+    };
+
+    const saveProxy = document.getElementById('save_proxy');
+    const deleteProxy = document.getElementById('delete_proxy');
+    saveProxy?.addEventListener('click', restoreBeforeCoreChange, true);
+    deleteProxy?.addEventListener('click', restoreBeforeCoreChange, true);
+    listenAfterCoreChange(document.getElementById('openai_proxy_preset'), 'change');
+    listenAfterCoreChange(document.getElementById('settings_preset_openai'), 'change');
+    listenAfterCoreChange(saveProxy, 'click');
+    listenAfterCoreChange(deleteProxy, 'click');
+    eventSource.on(event_types.OAI_PRESET_CHANGED_AFTER, syncAfterCoreChange);
+
+    // A password manager may change the displayed value without dispatching an
+    // input event. Restore the trusted value before the core connection handler.
+    document.getElementById('api_button_openai')?.addEventListener('click', () => {
+        restoreBeforeCoreChange();
+    }, true);
 }
 
 function onGenerationSettingsReady(generationData) {
@@ -265,6 +324,12 @@ function onGenerationSettingsReady(generationData) {
     if (!shouldRouteGenerationToResponses(generationData, oai_settings.reverse_proxy)) {
         console.debug('[OpenAI Responses] Skipped a generation request targeting a different API endpoint.');
         return;
+    }
+
+    if (proxyPasswordGuard) {
+        const trustedValue = proxyPasswordGuard.restore();
+        oai_settings.proxy_password = trustedValue;
+        generationData.proxy_password = trustedValue;
     }
 
     generationData._openai_responses = {
@@ -285,11 +350,13 @@ async function waitForDocumentReady() {
 async function initialize() {
     await waitForDocumentReady();
     getSettings();
+    // Install and restore the proxy secret before any later initialization can
+    // allow a queued core settings save to run.
+    installProxyPasswordProtection();
     installFetchBridge();
     installSourceOption();
     installConnectionNote();
     installSettingsPanel();
-    installProxyPasswordProtection();
     tagUnsupportedControls();
     eventSource.on(event_types.CHAT_COMPLETION_SETTINGS_READY, onGenerationSettingsReady);
     updateActiveUi();

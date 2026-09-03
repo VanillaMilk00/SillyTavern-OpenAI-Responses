@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- 修复 Chrome／Edge 页面加载时将 SillyTavern USER 密码自动填入并保存到代理密码的问题。
+- 从 SillyTavern 已加载的设置快照恢复代理密码，并加强直接编辑、代理预设切换与 Responses 请求的密码保护。
+
 ## 0.3.1
 
 - 以官方 `v0.3.0` 为基础合并本 Fork 的修复。

@@ -19,7 +19,7 @@ export const info = {
 };
 
 const OFFICIAL_API_BASE = 'https://api.openai.com/v1';
-const PLUGIN_VERSION = '0.3.1';
+const PLUGIN_VERSION = '0.3.2';
 
 let outboundFetch;
 let outboundProxy;
